@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Страница не найдена - Still Stand Up</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #000;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .error-code {
+            font-size: 8rem;
+            font-weight: 900;
+            margin: 0;
+            background: linear-gradient(45deg, #ff3366, #33ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin: 20px 0;
+        }
+        
+        p {
+            opacity: 0.8;
+            margin-bottom: 30px;
+            max-width: 500px;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .button {
+            padding: 12px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .button.primary {
+            background: linear-gradient(45deg, #ff3366, #33ccff);
+            border: none;
+        }
+        
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">STILL STAND UP</div>
+    <div class="error-code">404</div>
+    <h1>Страница не найдена</h1>
+    <p>Кажется, вы пытаетесь открыть страницу, которой не существует в нашем приложении.</p>
+    
+    <div class="buttons">
+        <a href="./" class="button primary">На главную</a>
+        <a href="https://stillstandup.com" class="button">На сайт клуба</a>
+        <a href="javascript:history.back()" class="button">Назад</a>
+    </div>
+    
+    <script>
+        // Автоматический редирект на главную через 10 секунд
+        setTimeout(() => {
+            window.location.href = './';
+        }, 10000);
+        
+        // Регистрация Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+</html>

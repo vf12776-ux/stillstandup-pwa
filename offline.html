@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Офлайн режим - Still Stand Up</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #000;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .offline-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+            100% { opacity: 0.5; transform: scale(1); }
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin: 10px 0;
+            background: linear-gradient(45deg, #ff3366, #33ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        p {
+            opacity: 0.8;
+            margin-bottom: 30px;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+        
+        .info-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #ff3366;
+            text-align: left;
+            max-width: 500px;
+        }
+        
+        .button {
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #ff3366, #33ccff);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: bold;
+            margin: 10px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .button.secondary {
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            background: rgba(255, 51, 102, 0.2);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .connection-status.online {
+            background: rgba(76, 175, 80, 0.2);
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff3366;
+        }
+        
+        .status-dot.online {
+            background: #4CAF50;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .cached-content {
+            margin-top: 30px;
+            max-width: 500px;
+        }
+        
+        .cached-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">ОФЛАЙН</span>
+    </div>
+    
+    <div class="offline-icon">📶</div>
+    <h1>Вы в офлайн режиме</h1>
+    
+    <p>Интернет-соединение отсутствует, но вы все еще можете использовать основные функции приложения.</p>
+    
+    <div class="info-box">
+        <h3>Что доступно офлайн:</h3>
+        <ul>
+            <li>Последняя загруженная афиша</li>
+            <li>Контактная информация клуба</li>
+            <li>Основная информация о приложении</li>
+            <li>Доступ к сохраненным страницам</li>
+        </ul>
+    </div>
+    
+    <div class="cached-content">
+        <h3>Доступные страницы:</h3>
+        <div class="cached-item">
+            <div>🏠</div>
+            <div>
+                <strong>Главная страница</strong><br>
+                <small>Основная информация о клубе</small>
+            </div>
+            <a href="./" class="button" style="padding: 8px 15px; margin-left: auto;">Открыть</a>
+        </div>
+    </div>
+    
+    <div style="margin-top: 40px;">
+        <button class="button" id="retryButton">Повторить подключение</button>
+        <button class="button secondary" id="refreshButton">Обновить страницу</button>
+    </div>
+    
+    <script>
+        // Элементы статуса соединения
+        const connectionStatus = document.getElementById('connectionStatus');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const retryButton = document.getElementById('retryButton');
+        const refreshButton = document.getElementById('refreshButton');
+        
+        // Проверка соединения
+        function updateConnectionStatus() {
+            const isOnline = navigator.onLine;
+            
+            if (isOnline) {
+                connectionStatus.classList.add('online');
+                statusDot.classList.add('online');
+                statusText.textContent = 'ОНЛАЙН';
+                
+                // Автоматический переход на главную при появлении сети
+                setTimeout(() => {
+                    window.location.href = './';
+                }, 2000);
+            } else {
+                connectionStatus.classList.remove('online');
+                statusDot.classList.remove('online');
+                statusText.textContent = 'ОФЛАЙН';
+            }
+        }
+        
+        // Обработчики событий сети
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+        
+        // Инициализация статуса
+        updateConnectionStatus();
+        
+        // Кнопка "Повторить подключение"
+        retryButton.addEventListener('click', () => {
+            if (navigator.onLine) {
+                window.location.href = './';
+            } else {
+                alert('Соединение все еще отсутствует. Проверьте подключение к интернету.');
+            }
+        });
+        
+        // Кнопка "Обновить страницу"
+        refreshButton.addEventListener('click', () => {
+            location.reload();
+        });
+        
+        // Проверка доступности кэшированных данных
+        if ('caches' in window) {
+            caches.open('stillstandup-v1.0').then(cache => {
+                cache.keys().then(requests => {
+                    console.log('Кэшированные ресурсы:', requests.length);
+                });
+            });
+        }
+        
+        // Регистрация Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+        
+        // Показ времени последнего обновления
+        document.addEventListener('DOMContentLoaded', () => {
+            const lastUpdate = localStorage.getItem('app_last_update');
+            if (lastUpdate) {
+                const date = new Date(parseInt(lastUpdate));
+                const timeElement = document.createElement('p');
+                timeElement.style.opacity = '0.6';
+                timeElement.style.fontSize = '0.8rem';
+                timeElement.style.marginTop = '20px';
+                timeElement.textContent = `Последнее обновление: ${date.toLocaleString('ru-RU')}`;
+                document.querySelector('.cached-content').appendChild(timeElement);
+            }
+        });
+    </script>
+</body>
+</html>
