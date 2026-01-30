@@ -1,155 +1,145 @@
-// Конфигурация
-const CACHE_NAME = 'stillstandup-v2.0';
+// Service Worker для Still Stand Up PWA
+// Версия 2.0 - Полная реализация
+
 const APP_NAME = 'Still Stand Up';
-const PRIMARY_URL = 'https://stillstandup.com';
+const APP_VERSION = '2.0.0';
+const CACHE_NAME = `stillstandup-cache-${APP_VERSION}`;
+const OFFLINE_URL = '/stillstandup-pwa/offline.html';
 
 // Файлы для предварительного кэширования
-const PRE_CACHE = [
-  '/',                    // index.html или index.php
-  '/index.html',         // Основная страница
-  '/index.php',          // PHP роутер
-  '/manifest.json',      // Манифест PWA
-  '/icon-192.png',       // Иконки
-  '/icon-512.png',
-  '/offline.html',       // Офлайн страница
-  '/404.html'           // Страница 404
+const PRECACHE_URLS = [
+  '/stillstandup-pwa/',
+  '/stillstandup-pwa/index.html',
+  '/stillstandup-pwa/manifest.json',
+  '/stillstandup-pwa/icon-192.png',
+  '/stillstandup-pwa/icon-512.png',
+  '/stillstandup-pwa/offline.html',
+  '/stillstandup-pwa/404.html',
+  '/stillstandup-pwa/sw.js'
 ];
 
-// Установка Service Worker
+// ========== УСТАНОВКА ==========
 self.addEventListener('install', event => {
-  console.log('⚙️ Still Stand Up PWA: Установка...');
+  console.log(`[Service Worker] ${APP_NAME} v${APP_VERSION} установка...`);
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('📦 Кэширование основных ресурсов');
-        return cache.addAll(PRE_CACHE);
+        console.log('[Service Worker] Кэширование основных файлов:', PRECACHE_URLS);
+        return cache.addAll(PRECACHE_URLS);
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log('[Service Worker] Предварительное кэширование завершено');
+        return self.skipWaiting(); // Активируем сразу
+      })
       .catch(error => {
-        console.error('❌ Ошибка кэширования:', error);
+        console.error('[Service Worker] Ошибка при установке:', error);
       })
   );
 });
 
-// Активация - очистка старых кэшей
+// ========== АКТИВАЦИЯ ==========
 self.addEventListener('activate', event => {
-  console.log('🚀 Still Stand Up PWA: Активация...');
+  console.log('[Service Worker] Активация...');
   
+  // Удаляем старые кэши
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
-            console.log(`🗑️ Удаление старого кэша: ${cacheName}`);
+            console.log('[Service Worker] Удаление старого кэша:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     })
     .then(() => {
-      console.log('✅ Кэш очищен');
-      return self.clients.claim();
+      console.log('[Service Worker] Активация завершена');
+      return self.clients.claim(); // Контролируем всех клиентов
     })
   );
 });
 
-// Обработка fetch запросов
+// ========== ОБРАБОТКА ЗАПРОСОВ ==========
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
   
-  // Пропускаем запросы к внешним ресурсам (сайт клуба)
+  // Пропускаем неподдерживаемые запросы
+  if (request.method !== 'GET') return;
+  
+  // Для запросов к сайту клуба - всегда сеть
   if (url.hostname.includes('stillstandup.com')) {
+    event.respondWith(fetch(request));
     return;
   }
   
-  // Пропускаем аналитику и другие внешние ресурсы
-  if (url.hostname !== self.location.hostname) {
-    return;
-  }
-  
-  // Для навигационных запросов используем стратегию "Сеть, потом Кэш"
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          // Клонируем и кэшируем успешные ответы
-          if (response.ok) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(request, responseClone);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          // Если сеть недоступна, пробуем кэш
-          return caches.match(request)
-            .then(response => {
-              if (response) {
-                return response;
-              }
-              // Если в кэше нет, показываем offline.html
-              return caches.match('/offline.html');
-            });
-        })
-    );
-    return;
-  }
-  
-  // Для статических ресурсов используем стратегию "Кэш, потом Сеть"
+  // Для нашего PWA используем стратегию "Сеть, потом Кэш"
   event.respondWith(
-    caches.match(request)
+    fetch(request)
       .then(response => {
-        if (response) {
-          return response;
+        // Если запрос успешен, кэшируем
+        if (response && response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(request, responseClone);
+          });
+        }
+        return response;
+      })
+      .catch(error => {
+        console.log('[Service Worker] Сеть недоступна, пробуем кэш:', request.url);
+        
+        // Для навигационных запросов показываем offline.html
+        if (request.mode === 'navigate') {
+          return caches.match(OFFLINE_URL)
+            .then(response => response || new Response('Страница недоступна офлайн', {
+              status: 503,
+              headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+            }));
         }
         
-        return fetch(request)
+        // Для остальных запросов ищем в кэше
+        return caches.match(request)
           .then(response => {
-            // Кэшируем только успешные ответы
-            if (response.ok) {
-              const responseClone = response.clone();
-              caches.open(CACHE_NAME).then(cache => {
-                cache.put(request, responseClone);
-              });
+            if (response) {
+              return response;
             }
-            return response;
-          })
-          .catch(() => {
-            // Для CSS/JS возвращаем пустые ответы
-            if (request.url.match(/\.(css|js)$/)) {
-              return new Response('', {
-                status: 200,
-                headers: { 'Content-Type': 'text/css' }
+            
+            // Для изображений возвращаем иконку
+            if (request.destination === 'image') {
+              return caches.match('/stillstandup-pwa/icon-192.png');
+            }
+            
+            // Для API запросов возвращаем пустой JSON
+            if (request.url.includes('/api/')) {
+              return new Response(JSON.stringify({ error: 'Офлайн режим' }), {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' }
               });
             }
             
-            // Для изображений показываем fallback
-            if (request.url.match(/\.(png|jpg|jpeg|gif|svg)$/)) {
-              return caches.match('/icon-192.png');
-            }
-            
-            return new Response('Ресурс недоступен офлайн', {
-              status: 503
+            return new Response('Ресурс недоступен в офлайн режиме', {
+              status: 503,
+              headers: { 'Content-Type': 'text/plain; charset=utf-8' }
             });
           });
       })
   );
 });
 
-// PUSH УВЕДОМЛЕНИЯ
+// ========== PUSH УВЕДОМЛЕНИЯ ==========
 self.addEventListener('push', event => {
-  console.log('🔔 Получено push-уведомление');
+  console.log('[Service Worker] Получено push уведомление');
   
   let notificationData = {
     title: APP_NAME,
     body: 'Новое событие в клубе!',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/stillstandup-pwa/icon-192.png',
+    badge: '/stillstandup-pwa/icon-192.png',
     data: {
-      url: PRIMARY_URL,
+      url: 'https://stillstandup.com',
       timestamp: Date.now()
     }
   };
@@ -158,85 +148,141 @@ self.addEventListener('push', event => {
     try {
       const data = event.data.json();
       notificationData = { ...notificationData, ...data };
-    } catch (e) {
+    } catch (error) {
       notificationData.body = event.data.text() || notificationData.body;
     }
   }
   
+  const options = {
+    body: notificationData.body,
+    icon: notificationData.icon,
+    badge: notificationData.badge,
+    data: notificationData.data,
+    vibrate: [200, 100, 200],
+    tag: 'stillstandup-notification',
+    renotify: true,
+    requireInteraction: true,
+    actions: [
+      {
+        action: 'open',
+        title: 'Открыть'
+      },
+      {
+        action: 'close',
+        title: 'Закрыть'
+      }
+    ]
+  };
+  
   event.waitUntil(
-    self.registration.showNotification(notificationData.title, {
-      body: notificationData.body,
-      icon: notificationData.icon,
-      badge: notificationData.badge,
-      data: notificationData.data,
-      vibrate: [200, 100, 200],
-      tag: 'stillstandup-event',
-      actions: [
-        {
-          action: 'open',
-          title: 'Открыть'
-        },
-        {
-          action: 'close',
-          title: 'Закрыть'
-        }
-      ]
-    })
+    self.registration.showNotification(notificationData.title, options)
   );
 });
 
-// Обработка кликов по уведомлениям
+// ========== КЛИК ПО УВЕДОМЛЕНИЮ ==========
 self.addEventListener('notificationclick', event => {
+  console.log('[Service Worker] Клик по уведомлению:', event.notification.tag);
+  
   event.notification.close();
   
-  if (event.action === 'open' || event.action === '') {
-    const url = event.notification.data.url || PRIMARY_URL;
+  const urlToOpen = event.notification.data.url || 'https://stillstandup.com';
+  
+  if (event.action === 'open') {
     event.waitUntil(
-      clients.openWindow(url)
+      clients.openWindow(urlToOpen)
+    );
+  } else {
+    // Клик по самому уведомлению
+    event.waitUntil(
+      clients.openWindow(urlToOpen)
     );
   }
 });
 
-// Синхронизация в фоне
+// ========== СИНХРОНИЗАЦИЯ В ФОНЕ ==========
 self.addEventListener('sync', event => {
-  if (event.tag === 'update-content') {
-    event.waitUntil(updateContent());
+  console.log('[Service Worker] Фоновая синхронизация:', event.tag);
+  
+  if (event.tag === 'sync-content') {
+    event.waitUntil(syncContent());
   }
 });
 
-async function updateContent() {
-  console.log('🔄 Фоновая синхронизация контента');
-  
+async function syncContent() {
   try {
-    // Обновляем кэш главной страницы
     const cache = await caches.open(CACHE_NAME);
-    const response = await fetch('/');
+    
+    // Обновляем главную страницу
+    const response = await fetch('/stillstandup-pwa/');
     if (response.ok) {
       await cache.put('/', response);
     }
     
-    // Отправляем сообщение об обновлении
+    // Сообщаем об обновлении
     const clients = await self.clients.matchAll();
     clients.forEach(client => {
       client.postMessage({
         type: 'CONTENT_UPDATED',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        version: APP_VERSION
       });
     });
     
+    console.log('[Service Worker] Контент синхронизирован');
   } catch (error) {
-    console.error('❌ Ошибка синхронизации:', error);
+    console.error('[Service Worker] Ошибка синхронизации:', error);
   }
 }
 
-// Периодическая синхронизация
-self.addEventListener('periodicsync', event => {
-  if (event.tag === 'refresh-cache') {
-    event.waitUntil(refreshCache());
+// ========== СООБЩЕНИЯ ОТ КЛИЕНТА ==========
+self.addEventListener('message', event => {
+  console.log('[Service Worker] Получено сообщение:', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  
+  if (event.data && event.data.type === 'GET_CACHE_INFO') {
+    event.ports[0].postMessage({
+      cacheName: CACHE_NAME,
+      version: APP_VERSION
+    });
   }
 });
 
-async function refreshCache() {
-  console.log('🔄 Периодическое обновление кэша');
-  // Можно реализовать обновление кэша по расписанию
+// ========== ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ ==========
+self.addEventListener('periodicsync', event => {
+  if (event.tag === 'update-check') {
+    event.waitUntil(checkForUpdates());
+  }
+});
+
+async function checkForUpdates() {
+  console.log('[Service Worker] Проверка обновлений...');
+  
+  try {
+    const response = await fetch('/stillstandup-pwa/manifest.json', {
+      cache: 'no-store'
+    });
+    
+    if (response.ok) {
+      const manifest = await response.json();
+      
+      // Здесь можно проверять версии и обновлять при необходимости
+      console.log('[Service Worker] Актуальная версия:', manifest.version);
+    }
+  } catch (error) {
+    console.error('[Service Worker] Ошибка проверки обновлений:', error);
+  }
 }
+
+// ========== ОБРАБОТКА ОШИБОК ==========
+self.addEventListener('error', event => {
+  console.error('[Service Worker] Ошибка:', event.error);
+});
+
+self.addEventListener('unhandledrejection', event => {
+  console.error('[Service Worker] Необработанный rejection:', event.reason);
+});
+
+console.log('[Service Worker] Загружен и готов к работе');

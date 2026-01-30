@@ -1,37 +1,51 @@
 {
   "name": "Still Stand Up",
-  "short_name": "StillStandUp",
+  "short_name": "SSU Club",
   "description": "Афиша, концерты и билеты клуба Still Stand Up",
-  "start_url": "/",
+  "start_url": "/stillstandup-pwa/?source=pwa",
+  "scope": "/stillstandup-pwa/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "theme_color": "#000000",
   "background_color": "#000000",
   "orientation": "portrait",
+  "categories": ["entertainment", "music", "events"],
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/stillstandup-pwa/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "/stillstandup-pwa/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "categories": ["entertainment", "music"],
   "shortcuts": [
     {
       "name": "Афиша",
       "short_name": "Афиша",
-      "description": "Посмотреть события клуба",
-      "url": "/?view=events"
+      "description": "Концерты и события",
+      "url": "/stillstandup-pwa/?view=events",
+      "icons": [{ "src": "/stillstandup-pwa/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Билеты",
       "short_name": "Билеты",
-      "description": "Купить билеты онлайн",
-      "url": "/?view=tickets"
+      "description": "Купить билеты",
+      "url": "/stillstandup-pwa/?view=tickets",
+      "icons": [{ "src": "/stillstandup-pwa/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/stillstandup-pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide"
     }
   ]
 }
