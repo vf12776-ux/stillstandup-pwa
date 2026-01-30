@@ -177,6 +177,68 @@
             color: #ff3366;
             font-size: 1.2rem;
         }
+        /* === Умная помощь === */
+.smart-help {
+    max-width: 400px;
+    width: 100%;
+    margin: 20px auto;
+    display: none;
+}
+
+.help-card {
+    background: rgba(255, 193, 7, 0.15);
+    border: 2px solid rgba(255, 193, 7, 0.3);
+    border-radius: 15px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    animation: slideIn 0.5s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.help-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.help-text {
+    flex: 1;
+    text-align: left;
+}
+
+.help-text strong {
+    color: #FFC107;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.help-text p {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+.help-fix-btn {
+    background: #FFC107;
+    color: #000;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.help-fix-btn:hover {
+    background: #ffb300;
+    transform: scale(1.05);
+}
     </style>
 </head>
 <body>
@@ -184,6 +246,17 @@
         <div class="logo">SSU</div>
         <h1>STILL STAND UP</h1>
         <p class="subtitle">Установите приложение клуба</p>
+        <!-- Умная помощь - появится только при проблемах -->
+<div class="smart-help" id="smartHelp" style="display: none;">
+    <div class="help-card">
+        <div class="help-icon">🤔</div>
+        <div class="help-text">
+            <strong>Помощь с установкой</strong>
+            <p id="helpMessage">Определяем проблему...</p>
+        </div>
+        <button class="help-fix-btn" id="fixButton">Исправить</button>
+    </div>
+</div>
         
         <div class="install-prompt">
             <p>Нажмите кнопку для установки приложения</p>
@@ -395,6 +468,91 @@
                 }
             }
         }, 5000);
+        // === Умная помощь для пользователя ===
+let userNeedsHelp = false;
+
+// Проверка: открыто в камере?
+function isInCameraViewer() {
+    // Если ширина маленькая и не Chrome/Safari - вероятно камера
+    return window.innerWidth < 400 && 
+           !navigator.userAgent.includes('Chrome') && 
+           !navigator.userAgent.includes('Safari');
+}
+
+// Показать помощь
+function showHelp(message, fixText, fixAction) {
+    const helpElement = document.getElementById('smartHelp');
+    const messageElement = document.getElementById('helpMessage');
+    const fixButton = document.getElementById('fixButton');
+    
+    helpElement.style.display = 'block';
+    messageElement.textContent = message;
+    fixButton.textContent = fixText;
+    
+    fixButton.onclick = fixAction;
+    userNeedsHelp = true;
+    
+    // Останавливаем таймер редиректа
+    clearInterval(timerInterval);
+    timerEl.textContent = '∞';
+    document.querySelector('.redirect-notice').innerHTML = `
+        <p>Решите проблему выше, затем:</p>
+        <button class="install-button" style="background: rgba(255,255,255,0.1);" 
+                onclick="window.location.href='https://stillstandup.com'">
+            Перейти на сайт клуба
+        </button>
+    `;
+}
+
+// Проверяем проблемы через 3 секунды
+setTimeout(() => {
+    // Проверка 1: Открыто в камере
+    if (isInCameraViewer()) {
+        showHelp(
+            'Кажется, QR-код открылся в камере. Для установки нужно открыть в браузере.',
+            'Открыть в браузере',
+            () => {
+                window.location.href = window.location.href; // Перезагружаем в браузере
+            }
+        );
+    }
+    
+    // Проверка 2: iOS не в Safari
+    else if (isIOS && !navigator.userAgent.includes('Safari')) {
+        showHelp(
+            'На iPhone приложение устанавливается только через Safari.',
+            'Открыть в Safari',
+            () => {
+                alert('1. Нажмите "Поделиться" внизу\\n2. Выберите "Safari"\\n3. Затем установите приложение');
+            }
+        );
+    }
+    
+    // Проверка 3: Android не в Chrome
+    else if (isAndroid && !navigator.userAgent.includes('Chrome')) {
+        showHelp(
+            'Для установки на Android лучше использовать Chrome.',
+            'Инструкция',
+            () => {
+                alert('1. Откройте эту ссылку в Chrome\\n2. Нажмите кнопку "Установить" выше\\n3. Или через меню Chrome (три точки) → "Установить приложение"');
+            }
+        );
+    }
+    
+    // Проверка 4: Нет кнопки установки через 5 секунд
+    setTimeout(() => {
+        if (!installAvailable && !isIOS && !userNeedsHelp) {
+            showHelp(
+                'Установка не предложилась автоматически.',
+                'Что делать?',
+                () => {
+                    alert('Варианты:\\n1. Обновите страницу (потяните вниз)\\n2. Нажмите ⋮ в Chrome → "Установить приложение"\\n3. Подождите еще 10 секунд');
+                }
+            );
+        }
+    }, 5000);
+    
+}, 3000); // Первая проверка через 3 секунды
     </script>
 </body>
 </html>
